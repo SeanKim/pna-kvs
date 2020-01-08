@@ -1,6 +1,7 @@
 extern crate clap;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::process::exit;
+use kvs::{Result, KvStore, KvError};
 
 fn parse_args() -> ArgMatches<'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -32,33 +33,47 @@ fn parse_args() -> ArgMatches<'static> {
         .get_matches()
 }
 
-fn main() {
+fn main() -> Result<()> {
     let matches = parse_args();
     if matches.is_present("version") {
         println!(env!("CARGO_PKG_VERSION"))
-    } else if let Some(subcommand_name) = matches.subcommand_name() {
-        match subcommand_name {
-            "get" => {
-                eprintln!("unimplemented");
-                exit(1);
-            }
-            "set" => {
-                eprintln!("unimplemented");
-                exit(1);
-            }
-            "rm" => {
-                eprintln!("unimplemented");
-                exit(1);
-            }
-            _ => {
-                eprintln!("available commands, [get, set, rm]");
-                exit(1);
+    };
+
+    let mut kvs = KvStore::open(std::env::current_dir().unwrap())?;
+    let (command, sub_matches) = matches.subcommand();
+    let sub_matches = sub_matches.unwrap();
+    let result = match command {
+        "get" => {
+            let key = sub_matches.value_of("key").unwrap().to_owned();
+            match kvs.get(key) {
+                Ok(value) => {
+                    println!("{}", value.unwrap());
+                    Ok(())
+                },
+                Err(e) => Err(e)
             }
         }
-    } else {
-        eprintln!("command required, [get, set, rm]");
-        exit(1);
-    }
-
-    println!("{:?}", matches.is_present("version"));
+        "set" => {
+            kvs.set(sub_matches.value_of("key").unwrap().to_owned(),
+                    sub_matches.value_of("value").unwrap().to_owned())
+        }
+        "rm" => {
+            kvs.remove(sub_matches.value_of("key").unwrap().to_owned())
+        }
+        _ => {
+            eprintln!("available commands, [get, set, rm]");
+            exit(1);
+        }
+    };
+    match result {
+        Ok(()) => {},
+        Err(KvError::KeyNotExists{key: _} ) => {
+            println!("Key not found");
+            if command == "rm" {
+                exit(1);
+            }
+        },
+        Err(e) => panic!("Unexpected error occurs {:?}", e)
+    };
+    return Ok(())
 }
