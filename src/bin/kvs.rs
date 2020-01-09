@@ -1,7 +1,7 @@
 extern crate clap;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use kvs::{KvError, KvStore, Result};
 use std::process::exit;
-use kvs::{Result, KvStore, KvError};
 
 fn parse_args() -> ArgMatches<'static> {
     App::new(env!("CARGO_PKG_NAME"))
@@ -50,33 +50,31 @@ fn main() -> Result<()> {
                     match value {
                         Some(v) => {
                             println!("{}", v);
-                        },
+                        }
                         None => println!("Key not found"),
                     }
                     Ok(())
-                },
-                Err(e) => Err(e)
+                }
+                Err(e) => Err(e),
             }
         }
-        "set" => {
-            kvs.set(sub_matches.value_of("key").unwrap().to_owned(),
-                    sub_matches.value_of("value").unwrap().to_owned())
-        }
-        "rm" => {
-            kvs.remove(sub_matches.value_of("key").unwrap().to_owned())
-        }
+        "set" => kvs.set(
+            sub_matches.value_of("key").unwrap().to_owned(),
+            sub_matches.value_of("value").unwrap().to_owned(),
+        ),
+        "rm" => kvs.remove(sub_matches.value_of("key").unwrap().to_owned()),
         _ => {
             eprintln!("available commands, [get, set, rm]");
             exit(1);
         }
     };
     match result {
-        Ok(()) => {},
-        Err(KvError::KeyNotExists{key: _} ) => {
+        Ok(()) => {}
+        Err(KvError::KeyNotExists { .. }) => {
             println!("Key not found");
             exit(1);
-        },
-        Err(e) => panic!("Unexpected error occurs {:?}", e)
+        }
+        Err(e) => panic!("Unexpected error occurs {:?}", e),
     };
-    return Ok(())
+    Ok(())
 }
