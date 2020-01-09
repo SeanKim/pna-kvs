@@ -34,8 +34,10 @@ pub type Result<T> = std::result::Result<T, KvError>;
 
 impl KvStore {
     pub fn set(&mut self, key: String, value: String) -> Result<()>{
-        self.log.seek(SeekFrom::End(0)).unwrap();
-        self.write(Command::Set{key, value} )
+        let idx = self.log.seek(SeekFrom::End(0)).unwrap();
+        let ret = self.write(Command::Set{key: key.clone(), value} );
+        self.log_pointer.insert(key, idx as usize);
+        ret
     }
 
     fn write(&mut self, cmd: Command) -> Result<()> {
@@ -89,14 +91,18 @@ impl KvStore {
         self.initialize_if_not();
         match self.log_pointer.get(&key).cloned() {
             Some(idx) => Ok(Some(self.read(idx))),
-            None => Err(KeyNotExists {key})
+            None => Ok(None),
         }
     }
 
     pub fn remove(&mut self, key: String) -> Result<()>{
         self.initialize_if_not();
         match self.log_pointer.get(&key) {
-            Some(_) => self.write(Command::Remove {key}),
+            Some(_) => {
+                let ret = self.write(Command::Remove {key: key.clone()});
+                self.log_pointer.remove(&key);
+                ret
+            },
             None => Err(KeyNotExists {key})
         }
     }

@@ -47,7 +47,12 @@ fn main() -> Result<()> {
             let key = sub_matches.value_of("key").unwrap().to_owned();
             match kvs.get(key) {
                 Ok(value) => {
-                    println!("{}", value.unwrap());
+                    match value {
+                        Some(v) => {
+                            println!("{}", v);
+                        },
+                        None => println!("Key not found"),
+                    }
                     Ok(())
                 },
                 Err(e) => Err(e)
@@ -69,9 +74,7 @@ fn main() -> Result<()> {
         Ok(()) => {},
         Err(KvError::KeyNotExists{key: _} ) => {
             println!("Key not found");
-            if command == "rm" {
-                exit(1);
-            }
+            exit(1);
         },
         Err(e) => panic!("Unexpected error occurs {:?}", e)
     };
