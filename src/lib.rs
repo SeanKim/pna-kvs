@@ -50,14 +50,22 @@ impl KvStore {
             Err(_) => Err(WriteError {}),
         }
     }
+    fn compaction(&mut self) -> Result<()> {
+        self.log.set_len(0).unwrap();
+        for (key, idx) in self.log_pointer {
+            self.set(key, value)?
+        }
+        // Todo get current position and update idx inplace
+        Ok(())
+    }
 
-    fn initialize_if_not(&mut self) {
+    fn initialize_if_not(&mut self) -> Result<()> {
         if self.log_pointer.is_empty() {
             self.log.seek(SeekFrom::Start(0)).unwrap();
             let mut buf = String::new();
             self.log.read_to_string(&mut buf).unwrap();
             if buf.is_empty() {
-                return;
+                return Ok(());
             }
             buf[..buf.len() - 1]
                 .split('\n')
@@ -76,7 +84,9 @@ impl KvStore {
                         (log_pointer, idx + len)
                     },
                 );
+            self.compaction()?
         }
+        Ok(())
     }
 
     fn read(&mut self, idx: usize) -> String {
@@ -92,7 +102,7 @@ impl KvStore {
     }
 
     pub fn get(&mut self, key: String) -> Result<Option<String>> {
-        self.initialize_if_not();
+        self.initialize_if_not()?;
         match self.log_pointer.get(&key).cloned() {
             Some(idx) => Ok(Some(self.read(idx))),
             None => Ok(None),
@@ -100,7 +110,7 @@ impl KvStore {
     }
 
     pub fn remove(&mut self, key: String) -> Result<()> {
-        self.initialize_if_not();
+        self.initialize_if_not()?;
         match self.log_pointer.get(&key) {
             Some(_) => {
                 let ret = self.write(Command::Remove { key: key.clone() });
