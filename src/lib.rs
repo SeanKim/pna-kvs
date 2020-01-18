@@ -53,10 +53,10 @@ impl KvStore {
     }
     fn compaction(&mut self) -> Result<()> {
         self.log.set_len(0).unwrap();
-        for (key, idx) in self.log_pointer {
+        for (key, idx) in self.log_pointer.clone() {
+            let value = self.read(idx);
             self.set(key, value)?
         }
-        // Todo get current position and update idx inplace
         Ok(())
     }
 
