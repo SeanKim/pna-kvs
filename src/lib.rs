@@ -30,6 +30,7 @@ pub enum KvError {
     WriteError,
 }
 
+
 pub type Result<T> = std::result::Result<T, KvError>;
 
 impl KvStore {
